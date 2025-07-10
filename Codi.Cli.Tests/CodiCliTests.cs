@@ -50,7 +50,7 @@ public class CodiCliTests
 
         // Assert
         Assert.Contains("items =", result);
-        Assert.Contains("[\r\n", result); // Array start with newline
+        Assert.Contains($"[{Environment.NewLine}", result); // Array start with newline
         Assert.Contains("\"a\",", result);
         Assert.Contains("\"b\",", result);
         Assert.Contains("\"c\",", result);
