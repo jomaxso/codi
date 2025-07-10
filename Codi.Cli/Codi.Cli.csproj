@@ -5,11 +5,27 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    
+    <!-- NuGet Tool Packaging -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>codi</ToolCommandName>
+    <PackageId>Codi.CLI</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Johannes Max Sorge</Authors>
+    <Description>A CLI tool that converts JSON data models into C# object initialization code</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/jomaxso/codi</RepositoryUrl>
+    <PackageTags>cli;csharp;json;codegen;dotnet-tool</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
       <!-- <PackageReference Include="System.CommandLine" Version="2.0.0-beta5.25306.1" /> -->
       <PackageReference Include="System.CommandLine.Hosting" Version="0.4.0-alpha.25306.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

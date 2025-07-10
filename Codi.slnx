@@ -5,4 +5,5 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="Codi.Cli/Codi.Cli.csproj" />
+  <Project Path="Codi.Cli.Tests/Codi.Cli.Tests.csproj" />
 </Solution>

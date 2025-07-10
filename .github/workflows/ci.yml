@@ -1,0 +1,123 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  PROJECT_PATH: 'Codi.Cli/Codi.Cli.csproj'
+
+jobs:
+  ci:
+    name: Build and Test CI
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-quality: 'preview'
+        
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+      
+    - name: Build
+      run: dotnet build ${{ env.PROJECT_PATH }} --configuration Debug --no-restore
+      
+    - name: Create test files
+      shell: bash
+      run: |
+        # Erstelle verschiedene Test-JSON Dateien
+        echo '{"simple": "test"}' > simple.json
+        echo '{"nested": {"value": 123, "array": [1, 2, 3]}}' > nested.json
+        echo '{"complex": {"users": [{"name": "John", "age": 30}, {"name": "Jane", "age": 25}]}}' > complex.json
+        
+    - name: Test CLI Tool - Simple JSON
+      run: |
+        dotnet run --project ${{ env.PROJECT_PATH }} -- --from simple.json --to test-output-simple
+        
+    - name: Test CLI Tool - Nested JSON
+      run: |
+        dotnet run --project ${{ env.PROJECT_PATH }} -- --from nested.json --to test-output-nested
+        
+    - name: Test CLI Tool - Complex JSON
+      run: |
+        dotnet run --project ${{ env.PROJECT_PATH }} -- --from complex.json --to test-output-complex
+        
+    - name: Verify outputs (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        echo "=== Simple Output ==="
+        cat test-output-simple/GeneratedInitialization.cs
+        echo -e "\n=== Nested Output ==="
+        cat test-output-nested/GeneratedInitialization.cs
+        echo -e "\n=== Complex Output ==="
+        cat test-output-complex/GeneratedInitialization.cs
+        
+    - name: Verify outputs (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "=== Simple Output ==="
+        Get-Content test-output-simple/GeneratedInitialization.cs
+        Write-Host "`n=== Nested Output ==="
+        Get-Content test-output-nested/GeneratedInitialization.cs
+        Write-Host "`n=== Complex Output ==="
+        Get-Content test-output-complex/GeneratedInitialization.cs
+        
+    - name: Test error handling
+      shell: bash
+      run: |
+        # Test mit nicht-existierender Datei (sollte einen Fehler geben)
+        if dotnet run --project ${{ env.PROJECT_PATH }} -- --from nonexistent.json --to error-test 2>/dev/null; then
+          echo "❌ Error handling test failed - should have failed with non-existent file"
+          exit 1
+        else
+          echo "✅ Error handling test passed - correctly failed with non-existent file"
+        fi
+
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-quality: 'preview'
+        
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+      
+    - name: Check formatting
+      run: |
+        dotnet format ${{ env.PROJECT_PATH }} --verify-no-changes --verbosity diagnostic
+        
+    - name: Build in Release mode
+      run: |
+        dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+        
+    - name: Check for warnings
+      run: |
+        dotnet build ${{ env.PROJECT_PATH }} --configuration Release --verbosity normal | tee build.log
+        if grep -i "warning" build.log; then
+          echo "❌ Build contains warnings"
+          exit 1
+        else
+          echo "✅ Build completed without warnings"
+        fi

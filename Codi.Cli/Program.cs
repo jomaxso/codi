@@ -47,6 +47,11 @@ rootCommand.SetAction(parseResult =>
     Console.WriteLine("Generating C# code for initialization...");
 
     var outputFile = Path.Combine(outputDirectory ?? Path.GetDirectoryName(parsedFile)!, "GeneratedInitialization.cs");
+    
+    // Stelle sicher, dass das Ausgabeverzeichnis existiert
+    var outputDir = Path.GetDirectoryName(outputFile)!;
+    Directory.CreateDirectory(outputDir);
+    
     File.WriteAllText(outputFile, code);
 
     Console.WriteLine($"Generated code written to: {outputFile}");
@@ -56,7 +61,7 @@ rootCommand.SetAction(parseResult =>
 
 return rootCommand.Parse(args).Invoke();
 
-file static class CSharpCode
+public static class CSharpCode
 {
     public static string ToCSharpInitializationString(this JsonNode json, string className = "MyObject")
     {
@@ -72,100 +77,145 @@ file static class CSharpCode
 
     private static CodeWriter ComputeInitializationFromSchema(CodeWriter codeWriter, JsonNode json, bool isRoot = true)
     {
-        codeWriter.WriteLine("new()");
-        codeWriter.StartBlock();
-
-        foreach (var prop in json.AsObject())
+        // Behandle verschiedene JSON-Typen basierend auf dem Kind
+        switch (json.GetValueKind())
         {
-            // Überspringe Meta-Properties die mit $ beginnen
-            if (prop.Key.StartsWith("$"))
-            {
-                continue;
-            }
+            case JsonValueKind.Object:
+                codeWriter.WriteLine("new()");
+                codeWriter.StartBlock();
 
-            var propertyName = prop.Key;
-            var propertySchema = prop.Value;
-
-            Debug.WriteLine($"Processing property: {propertyName}");
-            Debug.WriteLine($"Property schema: {propertySchema?.ToJsonString()}");
-
-            codeWriter.Write($"{propertyName} = ");
-
-            if (json[prop.Key] is not JsonNode propertyValue)
-            {
-                codeWriter.WriteLineWithComma("null");
-                continue;
-            }
-
-            Debug.WriteLine($"Property value: {propertyValue.ToJsonString()}");
-
-            switch (propertyValue.GetValueKind())
-            {
-                case JsonValueKind.Null:
-                    codeWriter.WriteLineWithComma("null");
-                    break;
-                case JsonValueKind.Undefined:
-                    codeWriter.WriteLineWithComma("default");
-                    break;
-                case JsonValueKind.String:
-                    codeWriter.WriteLineWithComma($"\"{propertyValue}\"");
-                    break;
-                case JsonValueKind.Number:
-                    codeWriter.WriteLineWithComma(propertyValue.ToString());
-                    break;
-                case JsonValueKind.False:
-                case JsonValueKind.True:
-                    codeWriter.WriteLineWithComma(propertyValue.ToString().ToLower());
-                    break;
-
-                case JsonValueKind.Array:
-                    var items = propertyValue.AsArray();
-                    if (items.Count != 0)
+                foreach (var prop in json.AsObject())
+                {
+                    // Überspringe Meta-Properties die mit $ beginnen
+                    if (prop.Key.StartsWith("$"))
                     {
-                        codeWriter.StartCollection();
+                        continue;
+                    }
 
-                        for (int i = 0; i < items.Count; i++)
+                    var propertyName = prop.Key;
+                    var propertyValue = prop.Value;
+
+                    Debug.WriteLine($"Processing property: {propertyName}");
+                    Debug.WriteLine($"Property schema: {propertyValue?.ToJsonString()}");
+
+                    codeWriter.Write($"{propertyName} = ");
+
+                    if (propertyValue is null)
+                    {
+                        codeWriter.WriteLineWithComma("null");
+                        continue;
+                    }
+
+                    Debug.WriteLine($"Property value: {propertyValue.ToJsonString()}");
+
+                    HandleJsonValue(codeWriter, propertyValue);
+                }
+
+                if (isRoot)
+                {
+                    codeWriter.EndBlockWithSemicolon();
+                }
+                else
+                {
+                    codeWriter.EndBlockWithComma();
+                }
+                break;
+
+            case JsonValueKind.Array:
+                var items = json.AsArray();
+                if (items.Count != 0)
+                {
+                    codeWriter.StartCollection();
+
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+
+                        Debug.WriteLine($"Processing array item {i}: {item?.ToJsonString()}");
+
+                        if (item is null)
                         {
-                            var item = items[i];
-
-                            Debug.WriteLine($"Processing array item {i}: {item?.ToJsonString()}");
-
-                            if (item is null)
-                            {
-                                continue;
-                            }
-
-                            ComputeInitializationFromSchema(codeWriter, item, false);
+                            continue;
                         }
 
-                        codeWriter.EndCollectionWithComma();
+                        ComputeInitializationFromSchema(codeWriter, item, false);
                     }
-                    else
-                    {
-                        // Wenn das Array leer ist, initialisieren wir es als leeres Array
-                        codeWriter.WriteLineWithComma("[]");
-                    }
-                    break;
 
-                case JsonValueKind.Object:
-                    ComputeInitializationFromSchema(codeWriter, propertyValue, false);
-                    continue;
+                    codeWriter.EndCollectionWithComma();
+                }
+                else
+                {
+                    // Wenn das Array leer ist, initialisieren wir es als leeres Array
+                    codeWriter.WriteLineWithComma("[]");
+                }
+                break;
 
-                default:
-                    codeWriter.WriteLineWithComma("default /* unsupported type */");
-                    break;
-            }
-        }
-
-        if (isRoot)
-        {
-            codeWriter.EndBlockWithSemicolon();
-        }
-        else
-        {
-            codeWriter.EndBlockWithComma();
+            default:
+                // Für primitive Typen
+                HandleJsonValue(codeWriter, json);
+                break;
         }
 
         return codeWriter;
+    }
+
+    private static void HandleJsonValue(CodeWriter codeWriter, JsonNode propertyValue)
+    {
+        switch (propertyValue.GetValueKind())
+        {
+            case JsonValueKind.Null:
+                codeWriter.WriteLineWithComma("null");
+                break;
+            case JsonValueKind.Undefined:
+                codeWriter.WriteLineWithComma("default");
+                break;
+            case JsonValueKind.String:
+                codeWriter.WriteLineWithComma($"\"{propertyValue}\"");
+                break;
+            case JsonValueKind.Number:
+                codeWriter.WriteLineWithComma(propertyValue.ToString());
+                break;
+            case JsonValueKind.False:
+            case JsonValueKind.True:
+                codeWriter.WriteLineWithComma(propertyValue.ToString().ToLower());
+                break;
+
+            case JsonValueKind.Array:
+                var items = propertyValue.AsArray();
+                if (items.Count != 0)
+                {
+                    codeWriter.StartCollection();
+
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+
+                        Debug.WriteLine($"Processing array item {i}: {item?.ToJsonString()}");
+
+                        if (item is null)
+                        {
+                            continue;
+                        }
+
+                        ComputeInitializationFromSchema(codeWriter, item, false);
+                    }
+
+                    codeWriter.EndCollectionWithComma();
+                }
+                else
+                {
+                    // Wenn das Array leer ist, initialisieren wir es als leeres Array
+                    codeWriter.WriteLineWithComma("[]");
+                }
+                break;
+
+            case JsonValueKind.Object:
+                ComputeInitializationFromSchema(codeWriter, propertyValue, false);
+                break;
+
+            default:
+                codeWriter.WriteLineWithComma("default /* unsupported type */");
+                break;
+        }
     }
 }
