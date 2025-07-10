@@ -47,11 +47,11 @@ rootCommand.SetAction(parseResult =>
     Console.WriteLine("Generating C# code for initialization...");
 
     var outputFile = Path.Combine(outputDirectory ?? Path.GetDirectoryName(parsedFile)!, "GeneratedInitialization.cs");
-    
+
     // Stelle sicher, dass das Ausgabeverzeichnis existiert
     var outputDir = Path.GetDirectoryName(outputFile)!;
     Directory.CreateDirectory(outputDir);
-    
+
     File.WriteAllText(outputFile, code);
 
     Console.WriteLine($"Generated code written to: {outputFile}");
