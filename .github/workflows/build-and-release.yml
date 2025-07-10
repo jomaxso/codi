@@ -27,6 +27,10 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'preview'
+    
+    - name: Check formatting
+      run: |
+        dotnet format ${{ env.PROJECT_PATH }} --verify-no-changes --verbosity diagnostic    
         
     - name: Restore dependencies
       run: dotnet restore
