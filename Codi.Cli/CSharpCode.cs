@@ -27,13 +27,13 @@ public static class CSharpCode
                 WriteObjectInitialization(codeWriter, json, isRoot);
                 break;
             case JsonValueKind.Array:
-                WriteArrayInitialization(codeWriter, json);
+                WriteArrayInitialization(codeWriter, json, isRoot);
                 break;
             default:
                 HandleJsonValue(codeWriter, json);
                 break;
         }
-
+    
         return codeWriter;
     }
 
@@ -57,25 +57,31 @@ public static class CSharpCode
     }
 
     // Extrahierte Methode für Array-Initialisierung
-    private static void WriteArrayInitialization(CodeWriter codeWriter, JsonNode json)
+    private static void WriteArrayInitialization(CodeWriter codeWriter, JsonNode json, bool isRoot)
     {
         var items = json.AsArray();
-
+    
         if (items.Count == 0)
         {
-            codeWriter.WriteLineWithComma("[]");
+            if (isRoot)
+                codeWriter.WriteLine("[];");
+            else
+                codeWriter.WriteLineWithComma("[]");
             return;
         }
-
+    
         codeWriter.StartCollection();
-
+    
         foreach (var item in items)
         {
             if (item is null) continue;
             ComputeInitializationFromSchema(codeWriter, item, false);
         }
-
-        codeWriter.EndCollectionWithComma();
+    
+        if (isRoot)
+            codeWriter.EndCollectionWithSemicolon();
+        else
+            codeWriter.EndCollectionWithComma();
     }
 
     private static void HandleJsonValue(this CodeWriter codeWriter, JsonNode? propertyValue)
