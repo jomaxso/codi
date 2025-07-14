@@ -2,7 +2,7 @@ using System.CodeDom.Compiler;
 
 namespace Codi.Cli;
 
-internal sealed class CodeWriter : IndentedTextWriter
+public sealed class CodeWriter : IndentedTextWriter
 {
     public CodeWriter(StringWriter stringWriter, int baseIndent) : base(stringWriter)
     {

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using Xunit;
 
@@ -6,6 +5,90 @@ namespace Codi.Cli.Tests;
 
 public class CodiCliTests
 {
+
+    [Fact]
+    public void ArrayWithNullElement_ShouldHitNullItemBranch()
+    {
+        // Arrange
+        var arr = new JsonArray(JsonValue.Create(1), null, JsonValue.Create(2));
+        var obj = new JsonObject();
+        obj["arr"] = arr;
+
+        // Act
+        var result = obj.ToCSharpInitializationString();
+
+        // Assert: Die Ausgabe enthält beide Zahlen, aber kein 'null,' für das mittlere Element
+        Assert.Contains("1,", result);
+        Assert.Contains("2,", result);
+        Assert.DoesNotContain("null,", result); // null-Elemente werden übersprungen
+    }
+   
+    [Fact]
+    public void RootArrayJsonToCSharp_ShouldHandleNullAndMixedTypes()
+    {
+        // Arrange
+        var json = "[\"a\", null, 42, true, {\"x\":1}, []]";
+        var jsonNode = JsonNode.Parse(json);
+
+        // Act
+        var result = jsonNode!.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains("[", result); // Array start
+        Assert.Contains("\"a\",", result);
+        // Null-Elemente werden übersprungen, daher nicht enthalten
+        Assert.DoesNotContain("null,", result);
+        Assert.Contains("42,", result);
+        Assert.Contains("true,", result);
+        Assert.Contains("x = 1", result); // Objekt im Array
+        Assert.Contains("[]", result); // Leeres Array im Array
+    }
+    [Fact]
+    public void RootArrayJsonToCSharp_ShouldHandleRootArrays()
+    {
+        // Arrange
+        var json = "[\"x\", \"y\", \"z\"]";
+        var jsonNode = JsonNode.Parse(json);
+
+        // Act
+        var result = jsonNode!.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains("[", result); // Array start
+        Assert.Contains("\"x\",", result);
+        Assert.Contains("\"y\",", result);
+        Assert.Contains("\"z\",", result);
+    }
+
+    [Fact]
+    public void JsonWithMetaProperties_ShouldSkipMetaProperties()
+    {
+        // Arrange
+        var json = """{"$meta": "shouldBeSkipped", "name": "Test"}""";
+        var jsonNode = JsonNode.Parse(json);
+
+        // Act
+        var result = jsonNode!.ToCSharpInitializationString();
+
+        // Assert
+        Assert.DoesNotContain("$meta", result);
+        Assert.Contains("name = \"Test\",", result);
+    }
+
+    [Fact]
+    public void JsonWithUndefined_ShouldHandleUnsupportedType()
+    {
+        // Arrange
+        var obj = new JsonObject();
+        // Simuliere einen "unsupported" Wert, indem ein Wert null gesetzt wird
+        obj["unsupported"] = null;
+        // Act
+        var result = obj.ToCSharpInitializationString();
+        // Assert
+        Assert.Contains("unsupported = null,", result);
+        // Für explizit unsupported types müsste man JsonValueKind.Undefined setzen, was mit JsonNode nicht direkt geht
+        // Daher ist dies ein Grenzfall, der im Code als default /* unsupported type */ behandelt wird, wenn ein unbekannter Typ kommt
+    }
     [Fact]
     public void SimpleJsonToCShar_ShouldGenerateValidCode()
     {
@@ -75,17 +158,17 @@ public class CodiCliTests
     {
         // Arrange
         var json = """
-        {
-            "users": [
-                {"name": "John", "age": 30},
-                {"name": "Jane", "age": 25}
-            ],
-            "config": {
-                "debug": true,
-                "timeout": 5000
-            }
+    {
+        "users": [
+            {"name": "John", "age": 30},
+            {"name": "Jane", "age": 25}
+        ],
+        "config": {
+            "debug": true,
+            "timeout": 5000
         }
-        """;
+    }
+    """;
         var jsonNode = JsonNode.Parse(json);
 
         // Act
@@ -142,6 +225,9 @@ public class CodiCliTests
 
         // Assert
         Assert.Contains("count = 42,", result);
+
         Assert.Contains("percentage = 85.5,", result);
     }
+
+
 }
