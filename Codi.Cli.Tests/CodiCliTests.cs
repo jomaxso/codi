@@ -90,7 +90,7 @@ public class CodiCliTests
         // Daher ist dies ein Grenzfall, der im Code als default /* unsupported type */ behandelt wird, wenn ein unbekannter Typ kommt
     }
     [Fact]
-    public void SimpleJsonToCShar_ShouldGenerateValidCode()
+    public void SimpleJsonToCSharp_ShouldGenerateValidCode()
     {
         // Arrange
         var json = """{"name": "Test", "value": 123}""";
@@ -229,5 +229,83 @@ public class CodiCliTests
         Assert.Contains("percentage = 85.5,", result);
     }
 
+    [Fact]
+    public void RootEmptyArrayJsonToCSharp_ShouldHandleEmptyArray()
+    {
+        // Arrange
+        var json = "[]";
+        var jsonNode = JsonNode.Parse(json);
 
+        // Act
+        var result = jsonNode!.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Equal("MyObject instance = [];", result.Trim());
+    }
+
+    [Fact]
+    public void MultipleEmptyArrays_ShouldHandleAllEmptyArrays()
+    {
+        // Arrange
+        var json = """
+            {
+                "array1": [],
+                "nested": {
+                    "array2": []
+                },
+                "arrays": [[], [], []]
+            }
+            """;
+        var jsonNode = JsonNode.Parse(json);
+
+        // Act
+        var result = jsonNode!.ToCSharpInitializationString();
+        Console.WriteLine(result); // Output for debugging
+
+        // Assert
+        Assert.Contains("array1 = [],", result);
+        Assert.Contains("array2 = [],", result);
+        // Find the arrays property robustly
+        var arraysStart = result.IndexOf("arrays =");
+        Assert.True(arraysStart >= 0, $"arrays property not found. Output: {result}");
+        var bracketStart = result.IndexOf('[', arraysStart);
+        Assert.True(bracketStart > arraysStart, $"arrays block not found. Output: {result}");
+        var blockLines = result.Substring(bracketStart).Split('\n');
+        int emptyArrayCount = 0;
+        foreach (var line in blockLines)
+        {
+            if (line.Trim() == "[]" || line.Trim() == "[],")
+                emptyArrayCount++;
+            if (line.Trim().StartsWith("]"))
+                break;
+        }
+        Console.WriteLine($"emptyArrayCount: {emptyArrayCount}"); // Print count for debugging
+        Assert.Equal(3, emptyArrayCount);
+    }
+
+    [Fact]
+    public void DeeplyNestedEmptyArrays_ShouldHandleNestedEmptyArrays()
+    {
+        // Arrange
+        var json = """
+            {
+                "nested": {
+                    "data": [
+                        {
+                            "items": []
+                        }
+                    ]
+                }
+            }
+            """;
+        var jsonNode = JsonNode.Parse(json);
+
+        // Act
+        var result = jsonNode!.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains("items = [],", result);
+        Assert.Contains("data =", result);
+        Assert.Contains("nested = new()", result);
+    }
 }
