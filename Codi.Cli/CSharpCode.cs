@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -114,32 +113,7 @@ public static class CSharpCode
                 break;
 
             case JsonValueKind.Array:
-                var items = propertyValue.AsArray();
-                if (items.Count != 0)
-                {
-                    codeWriter.StartCollection();
-
-                    for (int i = 0; i < items.Count; i++)
-                    {
-                        var item = items[i];
-
-                        Debug.WriteLine("Processing array item {0}", item?.ToJsonString() ?? "null");
-
-                        if (item is null)
-                        {
-                            continue;
-                        }
-
-                        ComputeInitializationFromSchema(codeWriter, item, false);
-                    }
-
-                    codeWriter.EndCollectionWithComma();
-                }
-                else
-                {
-                    // Wenn das Array leer ist, initialisieren wir es als leeres Array
-                    codeWriter.WriteLineWithComma("[]");
-                }
+                ComputeInitializationFromSchema(codeWriter, propertyValue, false);
                 break;
 
             case JsonValueKind.Object:
