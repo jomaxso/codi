@@ -22,7 +22,7 @@ public class CodiCliTests
         Assert.Contains("2,", result);
         Assert.DoesNotContain("null,", result); // null-Elemente werden übersprungen
     }
-   
+
     [Fact]
     public void RootArrayJsonToCSharp_ShouldHandleNullAndMixedTypes()
     {
@@ -270,7 +270,7 @@ public class CodiCliTests
         Assert.True(arraysStart >= 0, $"arrays property not found. Output: {result}");
         var bracketStart = result.IndexOf('[', arraysStart);
         Assert.True(bracketStart > arraysStart, $"arrays block not found. Output: {result}");
-        var blockLines = result.Substring(bracketStart).Split('\n');
+        var blockLines = result[bracketStart..].Split('\n');
         int emptyArrayCount = 0;
         foreach (var line in blockLines)
         {

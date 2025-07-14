@@ -33,7 +33,7 @@ public static class CSharpCode
                 HandleJsonValue(codeWriter, json);
                 break;
         }
-    
+
         return codeWriter;
     }
 
@@ -60,7 +60,7 @@ public static class CSharpCode
     private static void WriteArrayInitialization(CodeWriter codeWriter, JsonNode json, bool isRoot)
     {
         var items = json.AsArray();
-    
+
         if (items.Count == 0)
         {
             if (isRoot)
@@ -69,15 +69,15 @@ public static class CSharpCode
                 codeWriter.WriteLineWithComma("[]");
             return;
         }
-    
+
         codeWriter.StartCollection();
-    
+
         foreach (var item in items)
         {
             if (item is null) continue;
             ComputeInitializationFromSchema(codeWriter, item, false);
         }
-    
+
         if (isRoot)
             codeWriter.EndCollectionWithSemicolon();
         else
@@ -91,7 +91,7 @@ public static class CSharpCode
             codeWriter.WriteLineWithComma("null");
             return;
         }
-        
+
         switch (propertyValue.GetValueKind())
         {
             case JsonValueKind.Null:
