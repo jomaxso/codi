@@ -1,73 +1,74 @@
-# Codi Project - AI Coding Instructions
+
+# Codi Project – AI Coding Instructions
 
 ## Project Overview
-Codi is a CLI tool that converts JSON data models into C# object initialization code. It uses a single-file architecture with extension methods for clean separation of concerns.
+Codi is a CLI tool that converts JSON data models into C# object initialization code. It is designed for single-file architecture, clean separation of concerns, and modern .NET workflows.
 
-## Architecture Patterns
+## Architecture & Major Components
+- **CLI Entry Point**: `Codi.Cli/Program.cs` – System.CommandLine setup, argument parsing, JSON loading, and code generation logic.
+- **Code Generation**: `CSharpCode` public static class with extension method `ToCSharpInitializationString(JsonNode, className)` for recursive C# code generation from JSON.
+- **CodeWriter**: `Codi.Cli/CodeWriter.cs` – sealed class extending `IndentedTextWriter` with custom methods for C# syntax (commas, semicolons, blocks, indentation).
+- **Test Suite**: `Codi.Cli.Tests/` – XUnit-based tests for all supported JSON scenarios, referencing the CLI project directly.
 
-### Core Components
-- **CLI Entry Point**: `Program.cs` contains the System.CommandLine setup with `--from` (required) and `--to` (optional) parameters
-- **Code Generation**: `CSharpCode` static class with extension method `ToCSharpInitializationString()` that operates on `JsonNode`
-- **Code Writing**: `CodeWriter` sealed class extending `IndentedTextWriter` for formatted output with custom methods like `WriteLineWithComma()`, `StartBlock()`, `EndBlockWithSemicolon()`
+## Developer Workflows
+- **Build**: `dotnet build` (all projects)
+- **Run CLI**: `dotnet run --project Codi.Cli -- --from <input.json> [--to <output-dir>]`
+- **Test**: `dotnet test` (runs XUnit tests in `Codi.Cli.Tests`)
+- **Release**: `dotnet publish -c Release` (self-contained executable)
+- **NuGet Tool Packaging**: `dotnet pack Codi.Cli/Codi.Cli.csproj --configuration Release --output ./nupkg`
 
-### Key Design Decisions
-- Uses `file static class` for the `CSharpCode` class (file-scoped visibility)
-- Recursive pattern for handling nested JSON structures via `ComputeInitializationFromSchema()`
-- Extension method pattern: `JsonNode.ToCSharpInitializationString()` for clean API
-- Custom `CodeWriter` with specialized methods for C# syntax (commas, semicolons, blocks)
-
-## Development Workflows
-
-### Building & Running
-```bash
-dotnet build                    # Standard build
-dotnet run -- -f input.json    # Run with sample JSON file
-dotnet publish -c Release      # Create release build
-```
-
-### Code Generation Flow
-1. Parse CLI arguments using System.CommandLine
-2. Load JSON file and parse to `JsonNode`
-3. Call `ToCSharpInitializationString()` extension method
-4. Recursive traversal through `ComputeInitializationFromSchema()`
-5. Output to `GeneratedInitialization.cs` in target directory
+## Code Generation Flow
+1. CLI parses arguments (`--from`, `--to`) using System.CommandLine.
+2. Loads and parses JSON file to `JsonNode`.
+3. Calls `ToCSharpInitializationString()` extension method.
+4. Recursively traverses JSON via `ComputeInitializationFromSchema()`.
+5. Writes output to `GeneratedInitialization.cs` in the target directory (creates directory if needed).
 
 ## Project-Specific Conventions
+- **Meta-properties**: Properties starting with `$` are skipped (`if (prop.Key.StartsWith("$")) continue;`).
+- **Trailing Commas**: All object properties and array elements end with a comma.
+- **Indentation**: Managed via `CodeWriter.Indent++/--` for readable output.
+- **Empty Arrays**: Always rendered as `[]`.
+- **Error Handling**: Validates file existence and required parameters; unsupported JSON types emit `/* unsupported type */` comments.
+- **Debugging**: Uses `Debug.WriteLine()` for development tracing.
 
-### JSON Processing Patterns
-- Skip properties starting with `$` (meta-properties): `if (prop.Key.StartsWith("$")) continue;`
-- Handle all `JsonValueKind` cases explicitly in switch statements
-- Use `Debug.WriteLine()` for tracing during development
-- Arrays: Empty arrays become `[]`, populated arrays use collection syntax with trailing commas
+## Testing & Quality
+- **Test Project**: `Codi.Cli.Tests` (XUnit 2.9.3, .NET 10.0)
+- **Test Coverage**: Simple, nested, array, empty array, complex, null, boolean, and number JSON scenarios.
+- **Formatting**: Enforced via `dotnet format` in CI.
 
-### Code Generation Patterns
-- Default class name is "MyObject" but parameterizable
-- Use `new()` syntax for object initialization (C# 9+ target type inference)
-- Trailing commas on all object properties and array elements
-- Proper indentation management through `CodeWriter.Indent++/--`
-
-### Error Handling
-- File existence validation before processing
-- Required parameter validation with descriptive error messages
-- Graceful handling of unsupported JSON types with `/* unsupported type */` comments
-
-## Dependencies & Framework
-- **Target**: .NET 10.0 (cutting edge, note the preview nature)
-- **Key Package**: `System.CommandLine.Hosting` v0.4.0-alpha (not the main System.CommandLine package)
-- **No testing framework** currently configured
-
-## File Structure Conventions
-```
-Codi.Cli/Program.cs     # Everything in one file: CLI setup, JSON processing, code generation
-Codi.slnx              # Modern .slnx format (not .sln)
-```
+## Build & CI/CD
+- **Solution File**: `Codi.slnx` (modern format, includes CLI and test projects)
+- **CI Pipeline**: `.github/workflows/build-and-release.yml` – builds, formats, tests, packages, and (optionally) publishes NuGet tool.
+- **Release Flow**: Tag-based release triggers NuGet packaging and asset upload.
 
 ## Integration Points
-- Input: JSON files (any valid JSON structure)
-- Output: Single C# file with object initialization code
-- No external services or databases - purely file-based transformation tool
+- **Input**: Any valid JSON file
+- **Output**: Single C# file with object initialization code
+- **No external services or databases** – pure file-based transformation
 
-## Common Tasks
-- **Adding new JSON type support**: Extend the `JsonValueKind` switch in `ComputeInitializationFromSchema()`
-- **Modifying output format**: Update `CodeWriter` methods or the generation logic
-- **CLI changes**: Modify the `Option<string>` declarations and `SetAction` handler
+## Extending & Modifying
+- **Add new JSON type support**: Extend the `JsonValueKind` switch in `ComputeInitializationFromSchema()` in `Program.cs`.
+- **Change output format**: Update methods in `CodeWriter.cs` or code generation logic in `Program.cs`.
+- **CLI changes**: Adjust `Option<string>` declarations and root command handler in `Program.cs`.
+
+## Example: Code Generation
+Input JSON:
+```json
+{
+  "name": "John Doe",
+  "skills": ["C#", "Python"]
+}
+```
+Output C#:
+```csharp
+MyObject instance = new()
+{
+    name = "John Doe",
+    skills =
+    [
+        "C#",
+        "Python",
+    ],
+};
+```
