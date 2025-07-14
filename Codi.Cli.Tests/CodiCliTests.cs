@@ -307,4 +307,65 @@ public class CodiCliTests
         Assert.Contains("data =", result);
         Assert.Contains("nested = new()", result);
     }
+
+    [Fact]
+    public void JsonWithExplicitNull_ShouldHandleNullValue()
+    {
+        // Arrange
+        var obj = new JsonObject();
+        obj["nullValue"] = JsonValue.Create((object?)null);
+
+        // Act
+        var result = obj.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains("nullValue = null,", result);
+    }
+
+    [Fact]
+    public void JsonWithUndefinedValue_ShouldHandleUndefinedValue()
+    {
+        // Arrange
+        var obj = new JsonObject();
+        // System.Text.Json.Nodes does not support JsonValueKind.Undefined directly.
+        // JsonValue.Create((object?)null) results in JsonValueKind.Null, so output is 'null'.
+        obj["undefinedValue"] = JsonValue.Create((object?)null);
+
+        // Act
+        var result = obj.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains("undefinedValue = null,", result);
+    }
+
+    [Fact]
+    public void JsonWithUnsupportedType_ShouldHandleUnsupportedType()
+    {
+        // Arrange
+        var obj = new JsonObject();
+        // Wir simulieren einen nicht unterstützten Typ durch ein spezielles JsonNode
+        obj["unsupportedValue"] = new JsonObject(); // Dies wird als Object behandelt
+        
+        // Act
+        var result = obj.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains("unsupportedValue = new()", result);
+    }
+
+    [Theory]
+    [InlineData(true, "true")]
+    [InlineData(false, "false")]
+    public void JsonWithBooleanValues_ShouldHandleBooleanValues(bool value, string expected)
+    {
+        // Arrange
+        var obj = new JsonObject();
+        obj["boolValue"] = JsonValue.Create(value);
+
+        // Act
+        var result = obj.ToCSharpInitializationString();
+
+        // Assert
+        Assert.Contains($"boolValue = {expected},", result);
+    }
 }
