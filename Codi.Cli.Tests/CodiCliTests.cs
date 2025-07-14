@@ -260,8 +260,7 @@ public class CodiCliTests
 
         // Act
         var result = jsonNode!.ToCSharpInitializationString();
-        Console.WriteLine(result); // Output for debugging
-
+    
         // Assert
         Assert.Contains("array1 = [],", result);
         Assert.Contains("array2 = [],", result);
@@ -279,7 +278,7 @@ public class CodiCliTests
             if (line.Trim().StartsWith("]"))
                 break;
         }
-        Console.WriteLine($"emptyArrayCount: {emptyArrayCount}"); // Print count for debugging
+
         Assert.Equal(3, emptyArrayCount);
     }
 
